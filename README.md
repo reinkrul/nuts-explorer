@@ -1,10 +1,10 @@
-Features:
+# Features
 
-Explore DIDs;
+## DIDs
  - List DIDs
  - Show DID Document
  
-Explore VCs'
+## VCs (TBD)
  - List VCs
  - Show VC
  
