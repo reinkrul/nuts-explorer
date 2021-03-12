@@ -48,8 +48,13 @@ func registerAPI(router *mux.Router, proxy serviceProxy) {
 }
 
 func registerWebApp(router *mux.Router) {
-	sub, _ := fs.Sub(app, "web")
-	webapp := http.FileServer(http.FS(sub))
+	var sysFS fs.FS
+	if os.Getenv("LIVE_MODE") == "true" {
+		sysFS = os.DirFS("web")
+	} else {
+		sysFS, _ = fs.Sub(app, "web")
+	}
+	webapp := http.FileServer(http.FS(sysFS))
 	router.Handle("/", webapp)
 }
 

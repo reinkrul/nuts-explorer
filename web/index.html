@@ -1,8 +1,13 @@
 <html>
 <head>
-    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.5/build/pure-min.css" integrity="sha384-LTIDeidl25h2dPxrB2Ekgc9c7sEC3CWGM6HeFmuDNUjX76Ert4Z4IY714dhZHPLd" crossorigin="anonymous">
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.slim.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.6.0/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.6.0/highlight.min.js"></script>
+
     <script type="text/javascript">
+
+
         function listDIDs() {
             fetch("/api/vdr")
                 .then(function (response) {
@@ -25,6 +30,7 @@
                 })
                 .then(function (didDocument) {
                     $('#didDocument').text(JSON.stringify(didDocument, null, 2));
+                    hljs.highlightAll();
                 })
                 .catch(function (error) {
                     console.log("Error: " + error);
@@ -34,10 +40,10 @@
     </script>
 </head>
 <body>
-<h1>DID Explorer</h1>
+<h1>Nuts Explorer</h1>
 <ul id="didList"></ul>
 <h2>DID Document</h2>
-<pre id="didDocument"></pre>
+<pre><code id="didDocument" class="javascript"></code></pre>
 
 <script type="text/javascript">
     listDIDs();
