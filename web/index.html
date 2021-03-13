@@ -1,7 +1,10 @@
 <html>
 <head>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.6.0/styles/default.min.css">
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.6.0/highlight.min.js"></script>
 
@@ -23,6 +26,21 @@
                 });
         }
 
+        function listVCs() {
+            fetch("/api/vcr")
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (items) {
+                    let list = $('#vcList');
+                    list.empty();
+                    list.append(items.map(d => $('<li><a href="javascript:showVC(\'' + d + '\')">' + d + '</a></li>')));
+                })
+                .catch(function (error) {
+                    console.log("Error: " + error);
+                });
+        }
+
         function showDID(did) {
             fetch("/api/vdr/" + did)
                 .then(function (response) {
@@ -30,23 +48,92 @@
                 })
                 .then(function (didDocument) {
                     $('#didDocument').text(JSON.stringify(didDocument, null, 2));
-                    hljs.highlightAll();
                 })
                 .catch(function (error) {
                     console.log("Error: " + error);
                 });
         }
 
+        function showVC(id) {
+            let vc = document.vcList.filter(vc => vc.id === id)[0]
+            $('#verifiableCredential').text(JSON.stringify(vc, null, 2));
+        }
+
+        function updateVCSearch() {
+            let query = {params: []};
+            let name = $('#searchVCName').val();
+            if (name !== '') {
+                query.params.push({key: "organization.name", value: name});
+            }
+            let city = $('#searchVCCity').val();
+            if (city !== '') {
+                query.params.push({key: "organization.city", value: city});
+            }
+            $('#searchVCQuery').val(JSON.stringify(query, null, 2));
+            searchVCs();
+        }
+
+        function searchVCs() {
+            let query = $('#searchVCQuery').val();
+            fetch("/api/vcr/search/organization", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: query
+            }).then(function (response) {
+                return response.json();
+            })
+            .then(function (items) {
+                document.vcList = items;
+                let list = $('#vcList');
+                list.empty();
+                list.append(items.map(d => $('<li><a href="javascript:showVC(\'' + d.id + '\')">' + d.id + '</a></li>')));
+            })
+            .catch(function (error) {
+                console.log("Error: " + error);
+            });
+        }
+
+        hljs.highlightAll();
     </script>
 </head>
 <body>
 <h1>Nuts Explorer</h1>
+<h2>DID Documents</h2>
 <ul id="didList"></ul>
-<h2>DID Document</h2>
 <pre><code id="didDocument" class="javascript"></code></pre>
+
+<h2>Verifiable Credentials</h2>
+<h3>Search for NutsOrganizationCredential</h3>
+<form>
+    <div style="float: left;">
+        <div class="form-group row">
+            <label for="searchVCName" class="col-sm-2 col-form-label">Name:</label>
+            <div class="col-sm-10">
+                <input type="text" id="searchVCName" onkeyup="updateVCSearch()">
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="searchVCCity" class="col-sm-2 col-form-label">City:</label>
+            <div class="col-sm-10">
+                <input type="text" id="searchVCCity" onkeyup="updateVCSearch()">
+            </div>
+        </div>
+    </div>
+    <div style="float: right"  class="col-sm-6">
+        <h3>Query</h3>
+        <textarea id="searchVCQuery" style="height: 250px; width: 100%" onchange="searchVCs()"></textarea>
+    </div>
+</form>
+<div style="clear: both;"></div>
+<h2>Search results</h2>
+<ul id="vcList"></ul>
+<pre><code id="verifiableCredential" class="javascript"></code></pre>
 
 <script type="text/javascript">
     listDIDs();
+    updateVCSearch();
 </script>
 </body>
 </html>

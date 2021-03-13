@@ -2,8 +2,11 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -42,6 +45,24 @@ func registerAPI(router *mux.Router, proxy serviceProxy) {
 	router.HandleFunc("/api/vdr/{did}", func(writer http.ResponseWriter, request *http.Request) {
 		vars := mux.Vars(request)
 		if err := proxy.ResolveDID(writer, vars["did"]); err != nil {
+			sendError(writer, request, err)
+		}
+	})
+	router.HandleFunc("/api/vcr/search/{concept}", func(writer http.ResponseWriter, request *http.Request) {
+		vars := mux.Vars(request)
+		query, err := io.ReadAll(request.Body)
+		if err != nil {
+			sendError(writer, request, err)
+			return
+		}
+		// Make sure the query is valid JSON
+		var queryAsMap map[string]interface{}
+		if json.Unmarshal(query, &queryAsMap) != nil {
+			sendError(writer, request, errors.New("VC search query isn't valid JSON"))
+			return
+		}
+
+		if err := proxy.SearchVCs(writer, vars["concept"], query); err != nil {
 			sendError(writer, request, err)
 		}
 	})
