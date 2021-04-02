@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/nuts-foundation/nuts-did-explorer/api"
 	"io"
 	"io/fs"
 	"log"
@@ -16,7 +17,7 @@ import (
 
 const EnvAddr = "NUTS_NODE_ADDRESS"
 
-//go:embed web/*
+//go:embed web
 var app embed.FS
 
 func main() {
@@ -30,13 +31,13 @@ func main() {
 	log.Println("Proxying calls to Nuts Node on", nutsNodeAddress)
 
 	router := mux.NewRouter()
+	registerAPI(router, api.ServiceProxy{Address: nutsNodeAddress})
 	registerWebApp(router)
-	registerAPI(router, serviceProxy{address: nutsNodeAddress})
 	http.Handle("/", router)
 	_ = http.ListenAndServe(serverAddr, nil)
 }
 
-func registerAPI(router *mux.Router, proxy serviceProxy) {
+func registerAPI(router *mux.Router, proxy api.ServiceProxy) {
 	router.HandleFunc("/api/vdr", func(writer http.ResponseWriter, request *http.Request) {
 		if err := proxy.ListDIDs(writer); err != nil {
 			sendError(writer, request, err)
@@ -76,7 +77,7 @@ func registerWebApp(router *mux.Router) {
 		sysFS, _ = fs.Sub(app, "web")
 	}
 	webapp := http.FileServer(http.FS(sysFS))
-	router.Handle("/", webapp)
+	router.PathPrefix("/").Handler(webapp)
 }
 
 func sendError(writer http.ResponseWriter, request *http.Request, err error) {

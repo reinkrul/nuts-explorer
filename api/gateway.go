@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -10,43 +10,68 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const jsonMimeType = "application/json"
 
-type serviceProxy struct {
-	address string
+type ServiceProxy struct {
+	Address string
 }
 
-func (g serviceProxy) ListDIDs(w http.ResponseWriter) error {
+func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 	transactions, err := g.getTransactions()
 	if err != nil {
 		return err
 	}
 
-	resultsAsMap := make(map[string]bool, 0)
-	var results []string
+	type entry struct {
+		DID     string `json:"did"`
+		Created time.Time `json:"created"`
+		Updated time.Time `json:"updated"`
+	}
+	resultsAsMap := make(map[string]*entry, 0)
+	var results []*entry
 	for _, tx := range transactions {
 		hdrs := tx.Signatures()[0].ProtectedHeaders()
 		if hdrs.ContentType() == "application/did+json" {
 			// This is a DID. Derive DID from JWK key ID.
 			var keyID *did.DID
 			if hdrs.JWK() != nil {
+				// New DID
 				if keyID, err = did.ParseDID(hdrs.JWK().KeyID()); err != nil {
 					return err
 				}
 			} else {
+				// Update
 				if keyID, err = did.ParseDID(hdrs.KeyID()); err != nil {
 					return err
 				}
 			}
-			curr := *keyID
-			curr.Fragment = ""
-			// Updates end up as duplicate entries
-			if !resultsAsMap[curr.String()] {
-				results = append(results, curr.String())
+			currDID := *keyID
+			currDID.Fragment = ""
+			currDIDStr := currDID.String()
+
+			_, ok := resultsAsMap[currDIDStr]
+			sigtInterf, _ := hdrs.Get("sigt")
+			sigt := time.Unix(int64(sigtInterf.(float64)), 0)
+			if ok {
+				// Update
+				if sigt.After(resultsAsMap[currDID.String()].Updated) {
+					resultsAsMap[currDID.String()].Updated = sigt
+				}
+				if sigt.Before(resultsAsMap[currDID.String()].Created) {
+					resultsAsMap[currDID.String()].Created = sigt
+				}
+			} else {
+				// New DID
+				resultsAsMap[currDIDStr] = &entry{
+					DID:     currDIDStr,
+					Created: sigt,
+					Updated: sigt,
+				}
+				results = append(results, resultsAsMap[currDIDStr])
 			}
-			resultsAsMap[curr.String()] = true
 		}
 	}
 	w.Header().Add("Content-Type", jsonMimeType)
@@ -56,9 +81,8 @@ func (g serviceProxy) ListDIDs(w http.ResponseWriter) error {
 	return err
 }
 
-
-func (g serviceProxy) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
-	resp, err := http.Post(g.address + "/internal/vcr/v1/" + url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
+func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
+	resp, err := http.Post(g.Address+"/internal/vcr/v1/"+url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
 	if err != nil {
 		return err
 	}
@@ -73,8 +97,8 @@ func (g serviceProxy) SearchVCs(w http.ResponseWriter, concept string, query []b
 	return err
 }
 
-func (g serviceProxy) getTransactions() ([]*jws.Message, error) {
-	resp, err := http.Get(g.address + "/api/transaction")
+func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
+	resp, err := http.Get(g.Address + "/api/transaction")
 	if err != nil {
 		return nil, err
 	}
@@ -99,12 +123,12 @@ func (g serviceProxy) getTransactions() ([]*jws.Message, error) {
 	return transactions, nil
 }
 
-func (g serviceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
+func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
 	if !strings.HasPrefix(didToResolve, "did:nuts:") {
 		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
 	}
 
-	resp, err := http.Get(g.address + "/internal/vdr/v1/did/" + didToResolve)
+	resp, err := http.Get(g.Address + "/internal/vdr/v1/did/" + didToResolve)
 	if err != nil {
 		return err
 	}
