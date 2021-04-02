@@ -1,6 +1,7 @@
 class VCView extends React.Component {
     state = {
-        untrustedVCs: []
+        untrustedVCs: [],
+        currentDetailsVCID: null,
     };
 
     componentDidMount() {
@@ -15,11 +16,17 @@ class VCView extends React.Component {
         }
     }
 
+    showDetails(id) {
+        new VCService().get(id).then((doc) => this.setState({currentDetailsVCID: id}));
+    }
+
+
     render() {
         return <div>
             <VCSearch queryChanged={(concept, query) => this.search(concept, query)}/>
+            {this.state.currentDetailsVCID ? <VCDetails id={this.state.currentDetailsVCID}/> : ""}
             <h2>Untrusted VCs</h2>
-            <VCList items={this.state.untrustedVCs}/>
+            <VCList items={this.state.untrustedVCs} click={(id) => this.showDetails(id)}/>
         </div>;
     }
 }

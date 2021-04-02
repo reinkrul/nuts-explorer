@@ -1,3 +1,7 @@
+const VCTypes = [
+    "organization"
+]
+
 class VCService {
     search(concept, query) {
         const params = Object.entries(query).map((kv) => ({
@@ -13,8 +17,12 @@ class VCService {
         }).then(response => response.json())
     }
 
+    get(id) {
+        return fetch("/api/vcr/" + id).then((response) => response.json())
+    }
+
     getUntrustedVCs() {
-        // TODO
+        return fetch("//v1/" + VCTypes[0] + "/untrusted").then()
         return [];
     }
 }

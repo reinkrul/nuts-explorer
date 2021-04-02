@@ -142,3 +142,19 @@ func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string
 	_, err = writer.Write(data)
 	return err
 }
+
+func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
+	resp, err := http.Get(g.Address + "/internal/vcr/v1/vc/" + id)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	writer.Header().Add("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	_, err = writer.Write(data)
+	return err
+}
