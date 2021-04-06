@@ -18,11 +18,14 @@ class VCService {
     }
 
     get(id) {
-        return fetch("/api/vcr/" + id).then((response) => response.json())
+        return fetch("/api/vcr/" + encodeURIComponent(id)).then((response) => response.json())
     }
 
-    getUntrustedVCs() {
-        return fetch("//v1/" + VCTypes[0] + "/untrusted").then()
-        return [];
+    getUntrustedIssuers() {
+        return fetch("/api/vcr/untrusted").then((response) => response.json())
+    }
+
+    getTrustedIssuers() {
+        return fetch("/api/vcr/trusted").then((response) => response.json())
     }
 }

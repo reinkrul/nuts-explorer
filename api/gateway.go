@@ -15,6 +15,10 @@ import (
 
 const jsonMimeType = "application/json"
 
+var vcTypes = []string{
+	"NutsOrganizationCredential",
+}
+
 type ServiceProxy struct {
 	Address string
 }
@@ -26,7 +30,7 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 	}
 
 	type entry struct {
-		DID     string `json:"did"`
+		DID     string    `json:"did"`
 		Created time.Time `json:"created"`
 		Updated time.Time `json:"updated"`
 	}
@@ -74,11 +78,7 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 			}
 		}
 	}
-	w.Header().Add("Content-Type", jsonMimeType)
-	w.WriteHeader(http.StatusOK)
-	data, _ := json.Marshal(results)
-	_, err = w.Write(data)
-	return err
+	return respondOK(w, results)
 }
 
 func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
@@ -91,10 +91,82 @@ func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []b
 	if err != nil {
 		return err
 	}
-	w.Header().Add("Content-Type", jsonMimeType)
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(results)
-	return err
+	return respondOK(w, results)
+}
+
+func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
+	if !strings.HasPrefix(didToResolve, "did:nuts:") {
+		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
+	}
+
+	resp, err := http.Get(g.Address + "/internal/vdr/v1/did/" + didToResolve)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return respondOK(writer, data)
+}
+
+func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
+	if strings.Contains(id, "#") {
+		id = url.PathEscape(id)
+	}
+	resp, err := http.Get(g.Address + "/internal/vcr/v1/vc/" + id)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return respondOK(writer, data)
+}
+
+func (g ServiceProxy) ListTrustedVCIssuers(writer http.ResponseWriter) error {
+	result := make(map[string][]string, 0)
+	for _, vcType := range vcTypes {
+		resp, err := http.Get(g.Address + "/internal/vcr/v1/" + vcType + "/trusted")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		var items []string
+		if err := json.Unmarshal(data, &items); err != nil {
+			return err
+		}
+		result[vcType] = items
+	}
+	return respondOK(writer, result)
+}
+
+func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
+	result := make(map[string][]string, 0)
+	for _, vcType := range vcTypes {
+		resp, err := http.Get(g.Address + "/internal/vcr/v1/" + vcType + "/untrusted")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		var items []string
+		if err := json.Unmarshal(data, &items); err != nil {
+			return err
+		}
+		result[vcType] = items
+	}
+	return respondOK(writer, result)
 }
 
 func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
@@ -123,38 +195,19 @@ func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
 	return transactions, nil
 }
 
-func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
-	if !strings.HasPrefix(didToResolve, "did:nuts:") {
-		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
-	}
-
-	resp, err := http.Get(g.Address + "/internal/vdr/v1/did/" + didToResolve)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+func respondOK(writer http.ResponseWriter, body interface{}) error {
 	writer.Header().Add("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	_, err = writer.Write(data)
-	return err
-}
-
-func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
-	resp, err := http.Get(g.Address + "/internal/vcr/v1/vc/" + id)
-	if err != nil {
-		return err
+	var data []byte
+	if bodyAsBytes, ok := body.([]byte); ok {
+		data = bodyAsBytes
+	} else {
+		if bodyAsBytes, err := json.Marshal(body); err != nil {
+			return err
+		} else {
+			data = bodyAsBytes
+		}
 	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	writer.Header().Add("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	_, err = writer.Write(data)
+	_, err := writer.Write(data)
 	return err
 }

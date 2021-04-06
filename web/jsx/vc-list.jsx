@@ -10,7 +10,7 @@ class VCList extends React.Component {
             </thead>
             <tbody>
             {this.props.items.map(item =>
-                <tr style={{cursor: "pointer"}} onClick={() => this.props.click(item.id)} key={item.id}>
+                <tr style={{cursor: "pointer"}} onClick={() => this.props.click(item)} key={item.id}>
                     <td>{item.id}</td>
                     <td>{item.issuer}</td>
                     <td>{item.subject}</td>

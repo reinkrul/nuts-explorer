@@ -67,6 +67,16 @@ func registerAPI(router *mux.Router, proxy api.ServiceProxy) {
 			sendError(writer, request, err)
 		}
 	})
+	router.HandleFunc("/api/vcr/untrusted", func(writer http.ResponseWriter, request *http.Request) {
+		if err := proxy.ListUntrustedVCIssuers(writer); err != nil {
+			sendError(writer, request, err)
+		}
+	})
+	router.HandleFunc("/api/vcr/trusted", func(writer http.ResponseWriter, request *http.Request) {
+		if err := proxy.ListTrustedVCIssuers(writer); err != nil {
+			sendError(writer, request, err)
+		}
+	})
 	router.HandleFunc("/api/vcr/{id}", func(writer http.ResponseWriter, request *http.Request) {
 		vars := mux.Vars(request)
 		if err := proxy.GetVC(writer, vars["id"]); err != nil {
