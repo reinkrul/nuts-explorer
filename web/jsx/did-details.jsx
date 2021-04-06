@@ -1,14 +1,25 @@
 class DIDDetails extends React.Component {
+    constructor(props) {
+        super(props)
+        this.refresh();
+    }
+
     state = {
         resolutionResult: {
             document: {}
         }
     }
 
-    componentDidMount() {
+    refresh() {
         new DIDService().get(this.props.did).then(doc => {
             this.setState({resolutionResult: doc})
         })
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.did !== this.props.did) {
+            this.refresh();
+        }
     }
 
     render() {
