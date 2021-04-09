@@ -7,6 +7,10 @@ const Views = [
         title: "Verifiable Credentials",
         render: () => <VCView/>,
     },
+    {
+        title: "Network",
+        render: () => <NetworkView/>,
+    },
 ]
 
 
