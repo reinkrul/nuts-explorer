@@ -22,7 +22,8 @@ var vcTypes = []string{
 }
 
 type ServiceProxy struct {
-	Address string
+	APIAddress    string
+	StatusAddress string
 }
 
 func (g ServiceProxy) GetNetworkGraph(w http.ResponseWriter) error {
@@ -92,7 +93,7 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 }
 
 func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
-	resp, err := http.Post(g.Address+"/internal/vcr/v1/"+url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
+	resp, err := http.Post(g.APIAddress+"/internal/vcr/v1/"+url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
 	if err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string
 		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
 	}
 
-	resp, err := http.Get(g.Address + "/internal/vdr/v1/did/" + didToResolve)
+	resp, err := http.Get(g.APIAddress + "/internal/vdr/v1/did/" + didToResolve)
 	if err != nil {
 		return err
 	}
@@ -125,7 +126,7 @@ func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
 	if strings.Contains(id, "#") {
 		id = url.PathEscape(id)
 	}
-	resp, err := http.Get(g.Address + "/internal/vcr/v1/vc/" + id)
+	resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/vc/" + id)
 	if err != nil {
 		return err
 	}
@@ -140,7 +141,7 @@ func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
 func (g ServiceProxy) ListTrustedVCIssuers(writer http.ResponseWriter) error {
 	result := make(map[string][]string, 0)
 	for _, vcType := range vcTypes {
-		resp, err := http.Get(g.Address + "/internal/vcr/v1/" + vcType + "/trusted")
+		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/trusted")
 		if err != nil {
 			return err
 		}
@@ -161,7 +162,7 @@ func (g ServiceProxy) ListTrustedVCIssuers(writer http.ResponseWriter) error {
 func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
 	result := make(map[string][]string, 0)
 	for _, vcType := range vcTypes {
-		resp, err := http.Get(g.Address + "/internal/vcr/v1/" + vcType + "/untrusted")
+		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/untrusted")
 		if err != nil {
 			return err
 		}
@@ -189,7 +190,7 @@ type node struct {
 }
 
 func (g ServiceProxy) getNetworkGraph() ([]node, error) {
-	resp, err := http.Get(g.Address + "/status/diagnostics")
+	resp, err := http.Get(g.StatusAddress + "/status/diagnostics")
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +238,7 @@ func (g ServiceProxy) getNetworkGraph() ([]node, error) {
 }
 
 func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
-	resp, err := http.Get(g.Address + "/api/transaction")
+	resp, err := http.Get(g.APIAddress + "/api/transaction")
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,7 @@ import (
 )
 
 const EnvAddr = "NUTS_NODE_ADDRESS"
+const EnvStatusAddr = "NUTS_NODE_STATUS_ADDRESS"
 
 //go:embed web
 var app embed.FS
@@ -27,11 +28,15 @@ func main() {
 	if nutsNodeAddress == "" {
 		panic(EnvAddr + " not set")
 	}
+	nutsNodeStatusAddress := os.Getenv(EnvStatusAddr)
+	if nutsNodeStatusAddress == "" {
+		nutsNodeStatusAddress = nutsNodeAddress
+	}
 	nutsNodeAddress = strings.TrimSuffix(nutsNodeAddress, "/")
 	log.Println("Proxying calls to Nuts Node on", nutsNodeAddress)
 
 	router := mux.NewRouter()
-	registerAPI(router, api.ServiceProxy{Address: nutsNodeAddress})
+	registerAPI(router, api.ServiceProxy{APIAddress: nutsNodeAddress, StatusAddress: nutsNodeStatusAddress})
 	registerWebApp(router)
 	http.Handle("/", router)
 	_ = http.ListenAndServe(serverAddr, nil)
