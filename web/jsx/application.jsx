@@ -8,8 +8,12 @@ const Views = [
         render: () => <VCView/>,
     },
     {
-        title: "Network",
+        title: "Network Viewer",
         render: () => <NetworkView/>,
+    },
+    {
+        title: "DAG Viewer",
+        render: () => <DAGView/>,
     },
 ]
 

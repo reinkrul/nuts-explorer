@@ -88,8 +88,13 @@ func registerAPI(router *mux.Router, proxy api.ServiceProxy) {
 			sendError(writer, request, err)
 		}
 	})
-	router.HandleFunc("/api/network/graph", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc("/api/network/peergraph", func(writer http.ResponseWriter, request *http.Request) {
 		if err := proxy.GetNetworkGraph(writer); err != nil {
+			sendError(writer, request, err)
+		}
+	})
+	router.HandleFunc("/api/network/dag", func(writer http.ResponseWriter, request *http.Request) {
+		if err := proxy.GetDAG(writer); err != nil {
 			sendError(writer, request, err)
 		}
 	})

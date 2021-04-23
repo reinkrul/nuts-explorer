@@ -1,5 +1,9 @@
 class NetworkService {
-    getGraph() {
-        return fetch("/api/network/graph").then(response => response.json())
+    getPeerGraph() {
+        return fetch("/api/network/peergraph").then(response => response.json())
+    }
+
+    getDAG() {
+        return fetch("/api/network/dag").then(response => response.text())
     }
 }

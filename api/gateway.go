@@ -180,6 +180,22 @@ func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
 	return respondOK(writer, result)
 }
 
+func (g ServiceProxy) GetDAG(writer http.ResponseWriter) error {
+	resp, err := http.Get(g.StatusAddress + "/internal/network/v1/diagnostics/graph")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	writer.Header().Add("Content-Type", "text/vnd.graphviz")
+	writer.WriteHeader(http.StatusOK)
+	_, err = writer.Write(data)
+	return err
+}
+
 var ownPeerRegex = regexp.MustCompile("\\[P2P Network] Peer ID of local node: (.*)\n")
 var peersRegex = regexp.MustCompile("\\[P2P Network] Connected peers: (.*)\n")
 
@@ -238,7 +254,7 @@ func (g ServiceProxy) getNetworkGraph() ([]node, error) {
 }
 
 func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
-	resp, err := http.Get(g.APIAddress + "/api/transaction")
+	resp, err := http.Get(g.APIAddress + "/internal/network/v1/transaction")
 	if err != nil {
 		return nil, err
 	}
