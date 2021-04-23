@@ -181,7 +181,7 @@ func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
 }
 
 func (g ServiceProxy) GetDAG(writer http.ResponseWriter) error {
-	resp, err := http.Get(g.StatusAddress + "/internal/network/v1/diagnostics/graph")
+	resp, err := http.Get(g.APIAddress + "/internal/network/v1/diagnostics/graph")
 	if err != nil {
 		return err
 	}
