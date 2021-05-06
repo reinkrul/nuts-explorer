@@ -1,9 +1,13 @@
 class NetworkService {
+    constructor(basePath) {
+        this.basePath = basePath
+    }
+
     getPeerGraph() {
-        return fetch("/api/network/peergraph").then(response => response.json())
+        return fetch(this.basePath + "/api/network/peergraph").then(response => response.json())
     }
 
     getDAG() {
-        return fetch("/api/network/dag").then(response => response.text())
+        return fetch(this.basePath + "/api/network/dag").then(response => response.text())
     }
 }

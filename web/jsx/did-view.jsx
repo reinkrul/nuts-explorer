@@ -5,7 +5,7 @@ class DIDView extends React.Component {
     };
 
     componentDidMount() {
-        new DIDService().list().then((list) => {
+        new DIDService('.').list().then((list) => {
             this.setState({dids: list});
         })
     }

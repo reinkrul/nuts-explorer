@@ -11,7 +11,7 @@ class DIDDetails extends React.Component {
     }
 
     refresh() {
-        new DIDService().get(this.props.did).then(doc => {
+        new DIDService('.').get(this.props.did).then(doc => {
             this.setState({resolutionResult: doc})
         })
     }

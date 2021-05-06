@@ -12,24 +12,24 @@ class VCView extends React.Component {
     };
 
     refresh() {
-        new VCService().getUntrustedIssuers().then((items) => {
+        new VCService('.').getUntrustedIssuers().then((items) => {
             this.setState({untrustedIssuers: items})
         })
-        new VCService().getTrustedIssuers().then((items) => {
+        new VCService('.').getTrustedIssuers().then((items) => {
             this.setState({trustedIssuers: items})
         })
     }
 
     search(concept, query) {
         if (Object.entries(query).length > 0) {
-            new VCService().search(concept, query).then((items) => {
+            new VCService('.').search(concept, query).then((items) => {
                 this.setState({searchResults: items})
             })
         }
     }
 
     showDetails(vc) {
-        new VCService().get(vc.id).then((doc) => this.setState({currentDetailsVC: doc}));
+        new VCService('.').get(vc.id).then((doc) => this.setState({currentDetailsVC: doc}));
     }
 
     render() {

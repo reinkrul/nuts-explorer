@@ -9,7 +9,7 @@ class DAGView extends React.Component {
     };
 
     refresh() {
-        new NetworkService().getDAG().then((graph) => {
+        new NetworkService('.').getDAG().then((graph) => {
             this.setState({graph: graph})
         })
     }

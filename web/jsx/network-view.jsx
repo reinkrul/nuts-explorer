@@ -9,7 +9,7 @@ class NetworkView extends React.Component {
     };
 
     refresh() {
-        new NetworkService().getPeerGraph().then((graph) => {
+        new NetworkService('.').getPeerGraph().then((graph) => {
             this.setState({graph: graph})
         })
     }
