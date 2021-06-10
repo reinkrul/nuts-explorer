@@ -15,6 +15,7 @@ import (
 	"strings"
 )
 
+const EnvListenAddr = "NUTS_EXPLORER_ADDRESS"
 const EnvAddr = "NUTS_NODE_ADDRESS"
 const EnvStatusAddr = "NUTS_NODE_STATUS_ADDRESS"
 
@@ -22,7 +23,10 @@ const EnvStatusAddr = "NUTS_NODE_STATUS_ADDRESS"
 var app embed.FS
 
 func main() {
-	var serverAddr = ":8080"
+	var serverAddr string
+	if serverAddr = os.Getenv(EnvListenAddr); serverAddr == "" {
+		serverAddr = ":8080"
+	}
 	log.Println("Starting server on", serverAddr)
 	nutsNodeAddress := os.Getenv(EnvAddr)
 	if nutsNodeAddress == "" {
@@ -39,7 +43,10 @@ func main() {
 	registerAPI(router, api.ServiceProxy{APIAddress: nutsNodeAddress, StatusAddress: nutsNodeStatusAddress})
 	registerWebApp(router)
 	http.Handle("/", router)
-	_ = http.ListenAndServe(serverAddr, nil)
+	err := http.ListenAndServe(serverAddr, nil)
+	if err != nil {
+		_, _ = os.Stderr.WriteString(fmt.Sprintf("Unable to start listener: %v", err))
+	}
 }
 
 func registerAPI(router *mux.Router, proxy api.ServiceProxy) {

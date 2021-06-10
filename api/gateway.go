@@ -3,10 +3,11 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/lestrrat-go/jwx/jws"
-	"github.com/nuts-foundation/go-did"
+	"github.com/nuts-foundation/go-did/did"
+	v1 "github.com/nuts-foundation/nuts-node/network/api/v1"
+	"github.com/nuts-foundation/nuts-node/network/p2p"
 	"io"
 	"net/http"
 	"net/url"
@@ -46,7 +47,7 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 		Updated time.Time `json:"updated"`
 	}
 	resultsAsMap := make(map[string]*entry, 0)
-	var results []*entry
+	results := make([]*entry, len(resultsAsMap))
 	for _, tx := range transactions {
 		hdrs := tx.Signatures()[0].ProtectedHeaders()
 		if hdrs.ContentType() == "application/did+json" {
@@ -54,12 +55,12 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 			var keyID *did.DID
 			if hdrs.JWK() != nil {
 				// New DID
-				if keyID, err = did.ParseDID(hdrs.JWK().KeyID()); err != nil {
+				if keyID, err = did.ParseDIDURL(hdrs.JWK().KeyID()); err != nil {
 					return err
 				}
 			} else {
 				// Update
-				if keyID, err = did.ParseDID(hdrs.KeyID()); err != nil {
+				if keyID, err = did.ParseDIDURL(hdrs.KeyID()); err != nil {
 					return err
 				}
 			}
@@ -197,60 +198,71 @@ func (g ServiceProxy) GetDAG(writer http.ResponseWriter) error {
 }
 
 var ownPeerRegex = regexp.MustCompile("\\[P2P Network] Peer ID of local node: (.*)\n")
-var peersRegex = regexp.MustCompile("\\[P2P Network] Connected peers: (.*)\n")
 
 type node struct {
-	ID    string   `json:"id"`
-	Self  bool     `json:"self"`
-	Peers []string `json:"peers"`
+	ID    p2p.PeerID   `json:"id"`
+	Self  bool         `json:"self"`
+	Peers []p2p.PeerID `json:"peers"`
 }
 
 func (g ServiceProxy) getNetworkGraph() ([]node, error) {
-	resp, err := http.Get(g.StatusAddress + "/status/diagnostics")
+	nodes := make(map[p2p.PeerID]node, 0)
+
+	// Get local node
+	ownPeerIDStr, err := g.getNodePeerID()
 	if err != nil {
 		return nil, err
+	}
+	ownPeerID := p2p.PeerID(ownPeerIDStr)
+
+	// Register peer nodes
+	peers, err := v1.HTTPClient{ServerAddress: g.APIAddress, Timeout: 5 * time.Second}.GetPeerDiagnostics()
+	if err != nil {
+		return nil, err
+	}
+	for peerID, diagnostics := range peers {
+		nodes[peerID] = node{Peers: diagnostics.Peers, Self: peerID == ownPeerID}
+	}
+
+	// Register local node
+	peerIDs := make([]p2p.PeerID, 0, len(peers))
+	for p := range peers {
+		peerIDs = append(peerIDs, p)
+	}
+	nodes[ownPeerID] = node{Self: true, Peers: peerIDs}
+
+	// Convert to result slice
+	var result []node
+	for id, curr := range nodes {
+		result = append(result, curr)
+		i := len(result) - 1
+		result[i].ID = id
+		// nil slices break the frontend
+		if len(result[i].Peers) == 0 {
+			result[i].Peers = []p2p.PeerID{}
+		}
+	}
+	return result, nil
+}
+
+func (g ServiceProxy) getNodePeerID() (string, error) {
+	resp, err := http.Get(g.StatusAddress + "/status/diagnostics")
+	if err != nil {
+		return "", err
 	}
 	defer resp.Body.Close()
 	diagnosticsBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	diagnostics := string(diagnosticsBytes)
 
 	// Own peer ID
 	ownPeerIDStr := ownPeerRegex.FindStringSubmatch(diagnostics)
 	if len(ownPeerIDStr) != 2 {
-		return nil, errors.New("unable to find own peer ID in diagnostics")
+		return "", fmt.Errorf("unable to find own peer ID in diagnostics")
 	}
-	ownPeerID := ownPeerIDStr[1]
-
-	nodes := make(map[string]node, 0)
-	nodes[ownPeerID] = node{
-		ID:    ownPeerID,
-		Self:  true,
-		Peers: []string{},
-	}
-	// Peers
-	peersStr := peersRegex.FindStringSubmatch(diagnostics)
-	if len(peersStr) == 2 {
-		peers := strings.Split(peersStr[1], " ")
-		for _, peer := range peers {
-			peerParts := strings.Split(peer, "@")
-			if len(peerParts) == 2 {
-				self := nodes[ownPeerID]
-				peerID := peerParts[0]
-				self.Peers = append(self.Peers, peerID)
-				nodes[self.ID] = self
-				nodes[peerID] = node{ID: peerID, Peers: []string{}}
-			}
-		}
-	}
-
-	result := []node{}
-	for _, curr := range nodes {
-		result = append(result, curr)
-	}
-	return result, nil
+	return ownPeerIDStr[1], nil
 }
 
 func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
