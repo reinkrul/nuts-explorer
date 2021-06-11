@@ -18,8 +18,8 @@ class NetworkView extends React.Component {
         })
     }
 
-    getNodeLabel(node) {
-        const parts = node.id.split("-")
+    getNodeLabel(id) {
+        const parts = id.split("-")
         return parts[parts.length - 1]
     }
 
@@ -28,23 +28,18 @@ class NetworkView extends React.Component {
 
         const allEdges = graph.map((node) => node.peers.map(peer => ({from: node.id, to: peer}))).flat(1)
         // now allEdges contains logical duplicates because connections are bidirectional, which need to be filtered out:
-        const uniqueEdges = allEdges.reduce((map, obj) => {
+        const uniqueEdges = Object.values(allEdges.reduce((map, obj) => {
             map[keyStrings(obj.from, obj.to)] = obj
             return map
-        }, {})
+        }, {}))
 
-        const nodes = graph.map(node => ({
-            id: node.id,
-            label: this.getNodeLabel(node),
-            color: node.self ? 'lightblue' : 'lightgray',
-        }))
-        new vis.Network(this.el, {
-            nodes: new vis.DataSet(nodes),
-            edges: new vis.DataSet(Object.values(uniqueEdges))
-        }, {
-            height: '600',
-            width: '700'
-        })
+
+        let dot = "digraph {\n"
+        const localLabel = this.getNodeLabel(graph.filter(node => node.self)[0].id);
+        dot += "  \"" + localLabel + "\" [label=\"" + localLabel + "\\n(local)\"];\n"
+        uniqueEdges.forEach(edge => { dot += "  \"" + this.getNodeLabel(edge.from) +  "\" -> \"" + this.getNodeLabel(edge.to) + "\";\n" })
+        dot += "}"
+        d3.select(this.el).graphviz().renderDot(dot)
     }
 
     render() {

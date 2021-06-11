@@ -22,12 +22,12 @@ var vcTypes = []string{
 	"NutsOrganizationCredential",
 }
 
-type ServiceProxy struct {
+type NutsNodeService struct {
 	APIAddress    string
 	StatusAddress string
 }
 
-func (g ServiceProxy) GetNetworkGraph(w http.ResponseWriter) error {
+func (g NutsNodeService) GetNetworkGraph(w http.ResponseWriter) error {
 	graph, err := g.getNetworkGraph()
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func (g ServiceProxy) GetNetworkGraph(w http.ResponseWriter) error {
 	return respondOK(w, graph)
 }
 
-func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
+func (g NutsNodeService) ListDIDs(w http.ResponseWriter) error {
 	transactions, err := g.getTransactions()
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (g ServiceProxy) ListDIDs(w http.ResponseWriter) error {
 	return respondOK(w, results)
 }
 
-func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
+func (g NutsNodeService) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
 	resp, err := http.Post(g.APIAddress+"/internal/vcr/v1/"+url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (g ServiceProxy) SearchVCs(w http.ResponseWriter, concept string, query []b
 	return respondOK(w, results)
 }
 
-func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
+func (g NutsNodeService) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
 	if !strings.HasPrefix(didToResolve, "did:nuts:") {
 		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
 	}
@@ -123,7 +123,7 @@ func (g ServiceProxy) ResolveDID(writer http.ResponseWriter, didToResolve string
 	return respondOK(writer, data)
 }
 
-func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
+func (g NutsNodeService) GetVC(writer http.ResponseWriter, id string) error {
 	if strings.Contains(id, "#") {
 		id = url.PathEscape(id)
 	}
@@ -139,7 +139,7 @@ func (g ServiceProxy) GetVC(writer http.ResponseWriter, id string) error {
 	return respondOK(writer, data)
 }
 
-func (g ServiceProxy) ListTrustedVCIssuers(writer http.ResponseWriter) error {
+func (g NutsNodeService) ListTrustedVCIssuers(writer http.ResponseWriter) error {
 	result := make(map[string][]string, 0)
 	for _, vcType := range vcTypes {
 		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/trusted")
@@ -160,7 +160,7 @@ func (g ServiceProxy) ListTrustedVCIssuers(writer http.ResponseWriter) error {
 	return respondOK(writer, result)
 }
 
-func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
+func (g NutsNodeService) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
 	result := make(map[string][]string, 0)
 	for _, vcType := range vcTypes {
 		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/untrusted")
@@ -181,7 +181,7 @@ func (g ServiceProxy) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
 	return respondOK(writer, result)
 }
 
-func (g ServiceProxy) GetDAG(writer http.ResponseWriter) error {
+func (g NutsNodeService) GetDAG(writer http.ResponseWriter) error {
 	resp, err := http.Get(g.APIAddress + "/internal/network/v1/diagnostics/graph")
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ type node struct {
 	Peers []p2p.PeerID `json:"peers"`
 }
 
-func (g ServiceProxy) getNetworkGraph() ([]node, error) {
+func (g NutsNodeService) getNetworkGraph() ([]node, error) {
 	nodes := make(map[p2p.PeerID]node, 0)
 
 	// Get local node
@@ -245,7 +245,7 @@ func (g ServiceProxy) getNetworkGraph() ([]node, error) {
 	return result, nil
 }
 
-func (g ServiceProxy) getNodePeerID() (string, error) {
+func (g NutsNodeService) getNodePeerID() (string, error) {
 	resp, err := http.Get(g.StatusAddress + "/status/diagnostics")
 	if err != nil {
 		return "", err
@@ -265,7 +265,7 @@ func (g ServiceProxy) getNodePeerID() (string, error) {
 	return ownPeerIDStr[1], nil
 }
 
-func (g ServiceProxy) getTransactions() ([]*jws.Message, error) {
+func (g NutsNodeService) getTransactions() ([]*jws.Message, error) {
 	resp, err := http.Get(g.APIAddress + "/internal/network/v1/transaction")
 	if err != nil {
 		return nil, err

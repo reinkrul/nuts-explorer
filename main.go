@@ -40,7 +40,7 @@ func main() {
 	log.Println("Proxying calls to Nuts Node on", nutsNodeAddress)
 
 	router := mux.NewRouter()
-	registerAPI(router, api.ServiceProxy{APIAddress: nutsNodeAddress, StatusAddress: nutsNodeStatusAddress})
+	registerAPI(router, api.NutsNodeService{APIAddress: nutsNodeAddress, StatusAddress: nutsNodeStatusAddress})
 	registerWebApp(router)
 	http.Handle("/", router)
 	err := http.ListenAndServe(serverAddr, nil)
@@ -49,7 +49,7 @@ func main() {
 	}
 }
 
-func registerAPI(router *mux.Router, proxy api.ServiceProxy) {
+func registerAPI(router *mux.Router, proxy api.NutsNodeService) {
 	router.HandleFunc("/api/vdr", func(writer http.ResponseWriter, request *http.Request) {
 		if err := proxy.ListDIDs(writer); err != nil {
 			sendError(writer, request, err)
