@@ -33,8 +33,10 @@ class NetworkView extends React.Component {
             return map
         }, {}))
 
-
         let dot = "digraph {\n"
+        dot += "  edge [\n" +
+               "    arrowhead=\"none\"\n" +
+               "  ];\n"
         const localLabel = this.getNodeLabel(graph.filter(node => node.self)[0].id);
         dot += "  \"" + localLabel + "\" [label=\"" + localLabel + "\\n(local)\"];\n"
         uniqueEdges.forEach(edge => { dot += "  \"" + this.getNodeLabel(edge.from) +  "\" -> \"" + this.getNodeLabel(edge.to) + "\";\n" })
