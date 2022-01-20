@@ -1,13 +1,28 @@
+/*
+ * Copyright (C) 2021 Nuts community
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
 package main
 
 import (
 	"embed"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/nuts-foundation/nuts-did-explorer/api"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -50,58 +65,8 @@ func main() {
 }
 
 func registerAPI(router *mux.Router, proxy api.NutsNodeService) {
-	router.HandleFunc("/api/vdr", func(writer http.ResponseWriter, request *http.Request) {
-		if err := proxy.ListDIDs(writer); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/vdr/{did}", func(writer http.ResponseWriter, request *http.Request) {
-		vars := mux.Vars(request)
-		if err := proxy.ResolveDID(writer, vars["did"]); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/vcr/search/{concept}", func(writer http.ResponseWriter, request *http.Request) {
-		vars := mux.Vars(request)
-		query, err := io.ReadAll(request.Body)
-		if err != nil {
-			sendError(writer, request, err)
-			return
-		}
-		// Make sure the query is valid JSON
-		var queryAsMap map[string]interface{}
-		if json.Unmarshal(query, &queryAsMap) != nil {
-			sendError(writer, request, errors.New("VC search query isn't valid JSON"))
-			return
-		}
-
-		if err := proxy.SearchVCs(writer, vars["concept"], query); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/vcr/untrusted", func(writer http.ResponseWriter, request *http.Request) {
-		if err := proxy.ListUntrustedVCIssuers(writer); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/vcr/trusted", func(writer http.ResponseWriter, request *http.Request) {
-		if err := proxy.ListTrustedVCIssuers(writer); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/vcr/{id}", func(writer http.ResponseWriter, request *http.Request) {
-		vars := mux.Vars(request)
-		if err := proxy.GetVC(writer, vars["id"]); err != nil {
-			sendError(writer, request, err)
-		}
-	})
 	router.HandleFunc("/api/network/peergraph", func(writer http.ResponseWriter, request *http.Request) {
 		if err := proxy.GetNetworkGraph(writer); err != nil {
-			sendError(writer, request, err)
-		}
-	})
-	router.HandleFunc("/api/network/dag", func(writer http.ResponseWriter, request *http.Request) {
-		if err := proxy.GetDAG(writer); err != nil {
 			sendError(writer, request, err)
 		}
 	})

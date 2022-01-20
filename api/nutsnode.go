@@ -1,26 +1,33 @@
+/*
+ * Copyright (C) 2021 Nuts community
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/lestrrat-go/jwx/jws"
-	"github.com/nuts-foundation/go-did/did"
 	v1 "github.com/nuts-foundation/nuts-node/network/api/v1"
 	"github.com/nuts-foundation/nuts-node/network/p2p"
 	"io"
 	"net/http"
-	"net/url"
 	"regexp"
-	"strings"
 	"time"
 )
-
-const jsonMimeType = "application/json"
-
-var vcTypes = []string{
-	"NutsOrganizationCredential",
-}
 
 type NutsNodeService struct {
 	APIAddress    string
@@ -33,168 +40,6 @@ func (g NutsNodeService) GetNetworkGraph(w http.ResponseWriter) error {
 		return err
 	}
 	return respondOK(w, graph)
-}
-
-func (g NutsNodeService) ListDIDs(w http.ResponseWriter) error {
-	transactions, err := g.getTransactions()
-	if err != nil {
-		return err
-	}
-
-	type entry struct {
-		DID     string    `json:"did"`
-		Created time.Time `json:"created"`
-		Updated time.Time `json:"updated"`
-	}
-	resultsAsMap := make(map[string]*entry, 0)
-	results := make([]*entry, len(resultsAsMap))
-	for _, tx := range transactions {
-		hdrs := tx.Signatures()[0].ProtectedHeaders()
-		if hdrs.ContentType() == "application/did+json" {
-			// This is a DID. Derive DID from JWK key ID.
-			var keyID *did.DID
-			if hdrs.JWK() != nil {
-				// New DID
-				if keyID, err = did.ParseDIDURL(hdrs.JWK().KeyID()); err != nil {
-					return err
-				}
-			} else {
-				// Update
-				if keyID, err = did.ParseDIDURL(hdrs.KeyID()); err != nil {
-					return err
-				}
-			}
-			currDID := *keyID
-			currDID.Fragment = ""
-			currDIDStr := currDID.String()
-
-			_, ok := resultsAsMap[currDIDStr]
-			sigtInterf, _ := hdrs.Get("sigt")
-			sigt := time.Unix(int64(sigtInterf.(float64)), 0)
-			if ok {
-				// Update
-				if sigt.After(resultsAsMap[currDID.String()].Updated) {
-					resultsAsMap[currDID.String()].Updated = sigt
-				}
-				if sigt.Before(resultsAsMap[currDID.String()].Created) {
-					resultsAsMap[currDID.String()].Created = sigt
-				}
-			} else {
-				// New DID
-				resultsAsMap[currDIDStr] = &entry{
-					DID:     currDIDStr,
-					Created: sigt,
-					Updated: sigt,
-				}
-				results = append(results, resultsAsMap[currDIDStr])
-			}
-		}
-	}
-	return respondOK(w, results)
-}
-
-func (g NutsNodeService) SearchVCs(w http.ResponseWriter, concept string, query []byte) error {
-	resp, err := http.Post(g.APIAddress+"/internal/vcr/v1/"+url.PathEscape(concept), jsonMimeType, bytes.NewReader(query))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	results, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return respondOK(w, results)
-}
-
-func (g NutsNodeService) ResolveDID(writer http.ResponseWriter, didToResolve string) error {
-	if !strings.HasPrefix(didToResolve, "did:nuts:") {
-		return fmt.Errorf("invalid DID to resolve: %s", didToResolve)
-	}
-
-	resp, err := http.Get(g.APIAddress + "/internal/vdr/v1/did/" + didToResolve)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return respondOK(writer, data)
-}
-
-func (g NutsNodeService) GetVC(writer http.ResponseWriter, id string) error {
-	if strings.Contains(id, "#") {
-		id = url.PathEscape(id)
-	}
-	resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/vc/" + id)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return respondOK(writer, data)
-}
-
-func (g NutsNodeService) ListTrustedVCIssuers(writer http.ResponseWriter) error {
-	result := make(map[string][]string, 0)
-	for _, vcType := range vcTypes {
-		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/trusted")
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		var items []string
-		if err := json.Unmarshal(data, &items); err != nil {
-			return err
-		}
-		result[vcType] = items
-	}
-	return respondOK(writer, result)
-}
-
-func (g NutsNodeService) ListUntrustedVCIssuers(writer http.ResponseWriter) error {
-	result := make(map[string][]string, 0)
-	for _, vcType := range vcTypes {
-		resp, err := http.Get(g.APIAddress + "/internal/vcr/v1/" + vcType + "/untrusted")
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		var items []string
-		if err := json.Unmarshal(data, &items); err != nil {
-			return err
-		}
-		result[vcType] = items
-	}
-	return respondOK(writer, result)
-}
-
-func (g NutsNodeService) GetDAG(writer http.ResponseWriter) error {
-	resp, err := http.Get(g.APIAddress + "/internal/network/v1/diagnostics/graph")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	writer.Header().Add("Content-Type", "text/vnd.graphviz")
-	writer.WriteHeader(http.StatusOK)
-	_, err = writer.Write(data)
-	return err
 }
 
 var ownPeerRegex = regexp.MustCompile("\\[P2P Network] Peer ID of local node: (.*)\n")
@@ -246,7 +91,12 @@ func (g NutsNodeService) getNetworkGraph() ([]node, error) {
 }
 
 func (g NutsNodeService) getNodePeerID() (string, error) {
-	resp, err := http.Get(g.StatusAddress + "/status/diagnostics")
+	request, err := http.NewRequest("GET", g.StatusAddress+"/status/diagnostics", nil)
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("Accept", "application/json")
+	resp, err := (&http.Client{}).Do(request)
 	if err != nil {
 		return "", err
 	}
@@ -255,40 +105,13 @@ func (g NutsNodeService) getNodePeerID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	diagnostics := string(diagnosticsBytes)
 
-	// Own peer ID
-	ownPeerIDStr := ownPeerRegex.FindStringSubmatch(diagnostics)
-	if len(ownPeerIDStr) != 2 {
-		return "", fmt.Errorf("unable to find own peer ID in diagnostics")
-	}
-	return ownPeerIDStr[1], nil
-}
-
-func (g NutsNodeService) getTransactions() ([]*jws.Message, error) {
-	resp, err := http.Get(g.APIAddress + "/internal/network/v1/transaction")
+	data := map[string]interface{}{}
+	err = json.Unmarshal(diagnosticsBytes, &data)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	defer resp.Body.Close()
-	transactionsAsBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var transactionsAsStrings []string
-	if err := json.Unmarshal(transactionsAsBytes, &transactionsAsStrings); err != nil {
-		return nil, err
-	}
-	var transactions []*jws.Message
-	for _, str := range transactionsAsStrings {
-		if tx, err := jws.ParseString(str); err != nil {
-			return nil, err
-		} else {
-			transactions = append(transactions, tx)
-		}
-	}
-	return transactions, nil
+	return fmt.Sprintf("%s", (data["network"].(map[string]interface{}))["peer_id"]), nil
 }
 
 func respondOK(writer http.ResponseWriter, body interface{}) error {

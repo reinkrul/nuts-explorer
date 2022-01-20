@@ -1,13 +1,5 @@
 # Features
 
-## DIDs
- - List DIDs
- - Show DID Document
- 
-## VCs (TBD)
- - List VCs
- - Show VC
- 
 # Building
 
 ```shell script

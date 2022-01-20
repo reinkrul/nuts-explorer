@@ -13,27 +13,13 @@
     <script src="https://unpkg.com/@hpcc-js/wasm/dist/index.min.js" type="application/javascript"></script>
     <script src="https://unpkg.com/d3-graphviz@3.2.0/build/d3-graphviz.js"></script>
     <!-- API -->
-    <script src="api/vc.js" type="text/javascript"></script>
-    <script src="api/did.js" type="text/javascript"></script>
     <script src="api/network.js" type="text/javascript"></script>
-    <!-- Views -->
-    <script src="jsx/did-list.jsx" type="text/babel"></script>
-    <script src="jsx/did-details.jsx" type="text/babel"></script>
-    <script src="jsx/did-view.jsx" type="text/babel"></script>
-    <script src="jsx/vc-search.jsx" type="text/babel"></script>
-    <script src="jsx/vc-list.jsx" type="text/babel"></script>
-    <script src="jsx/vc-details.jsx" type="text/babel"></script>
-    <script src="jsx/vc-issuers.jsx" type="text/babel"></script>
-    <script src="jsx/vc-view.jsx" type="text/babel"></script>
     <script src="jsx/network-view.jsx" type="text/babel"></script>
-    <script src="jsx/dag-view.jsx" type="text/babel"></script>
-    <!-- Application -->
-    <script src="jsx/application.jsx" type="text/babel"></script>
 </head>
 <body>
 <div id="app"></div>
 <script type="text/babel">
-    ReactDOM.render(<Application/>, document.querySelector('#app'));
+    ReactDOM.render(<NetworkView/>, document.querySelector('#app'));
 </script>
 </body>
 </html>
