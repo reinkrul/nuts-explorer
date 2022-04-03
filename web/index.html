@@ -1,25 +1,111 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
-            crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <!-- For DAG visualization -->
-    <script src="//d3js.org/d3.v5.min.js"></script>
-    <script src="https://unpkg.com/@hpcc-js/wasm/dist/index.min.js" type="application/javascript"></script>
-    <script src="https://unpkg.com/d3-graphviz@3.2.0/build/d3-graphviz.js"></script>
-    <!-- API -->
-    <script src="api/network.js" type="text/javascript"></script>
-    <script src="jsx/network-view.jsx" type="text/babel"></script>
+    <title>Nuts Network Explorer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        circle {
+            fill: cadetblue;
+        }
+        line {
+            stroke: #ccc;
+        }
+        text {
+            text-anchor: middle;
+            font-family: "Helvetica Neue", Helvetica, sans-serif;
+            fill: #666;
+            font-size: 16px;
+        }
+        svg {
+            border: 1px solid black;
+        }
+    </style>
 </head>
+
 <body>
-<div id="app"></div>
-<script type="text/babel">
-    ReactDOM.render(<NetworkView/>, document.querySelector('#app'));
+<div id="content">
+    <svg id="target" style="margin: auto;">
+        <g class="links"></g>
+        <g class="nodes"></g>
+    </svg>
+</div>
+<script type="text/javascript">
+    const width = 500;
+    const height = 500;
+    const svgTarget = document.getElementById('target')
+    svgTarget.style.width = width + 'px';
+    svgTarget.style.height = height + 'px';
+
+    fetch("api/network/peergraph")
+        .then(response => response.json())
+        .then((srcData) => {
+            let nodes = srcData.map((node) => { return {
+                "name": node.id,
+            }})
+
+            const linksSet = new Set();
+            srcData.map((node) => {
+                node.peers.map((peer) => {
+                    let peerIndex = nodes.findIndex(e => { return e.name === peer});
+                    if (peerIndex === -1) {
+                        nodes.push({name: peer});
+                        peerIndex = nodes.length - 1
+                    }
+                    linksSet.add({"source": nodes.findIndex(e => { return e.name === node.id}), "target": peerIndex})
+                })
+            })
+            let links = Array.from(linksSet);
+
+            var simulation = d3.forceSimulation(nodes)
+                .force('charge', d3.forceManyBody().strength(-width))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('link', d3.forceLink().links(links))
+                .on('tick', ticked);
+
+            function updateLinks() {
+                var u = d3.select('.links')
+                    .selectAll('line')
+                    .data(links)
+                    .join('line')
+                    .attr('x1', function(d) {
+                        return d.source.x
+                    })
+                    .attr('y1', function(d) {
+                        return d.source.y
+                    })
+                    .attr('x2', function(d) {
+                        return d.target.x
+                    })
+                    .attr('y2', function(d) {
+                        return d.target.y
+                    });
+            }
+
+            function updateNodes() {
+                u = d3.select('.nodes')
+                    .selectAll('text')
+                    .data(nodes)
+                    .join('text')
+                    .text(function(d) {
+                        return d.name.split('-')[0]
+                    })
+                    .attr('x', function(d) {
+                        return d.x
+                    })
+                    .attr('y', function(d) {
+                        return d.y
+                    })
+                    .attr('dy', function(d) {
+                        return 5
+                    });
+            }
+
+            function ticked() {
+                updateLinks()
+                updateNodes()
+            }
+        })
 </script>
 </body>
 </html>

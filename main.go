@@ -48,10 +48,10 @@ func main() {
 		panic(EnvAddr + " not set")
 	}
 	nutsNodeStatusAddress := os.Getenv(EnvStatusAddr)
+	nutsNodeAddress = strings.TrimSuffix(nutsNodeAddress, "/")
 	if nutsNodeStatusAddress == "" {
 		nutsNodeStatusAddress = nutsNodeAddress
 	}
-	nutsNodeAddress = strings.TrimSuffix(nutsNodeAddress, "/")
 	log.Println("Proxying calls to Nuts Node on", nutsNodeAddress)
 
 	router := mux.NewRouter()

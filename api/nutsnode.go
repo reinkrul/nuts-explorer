@@ -22,10 +22,9 @@ import (
 	"encoding/json"
 	"fmt"
 	v1 "github.com/nuts-foundation/nuts-node/network/api/v1"
-	"github.com/nuts-foundation/nuts-node/network/p2p"
+	"github.com/nuts-foundation/nuts-node/network/transport"
 	"io"
 	"net/http"
-	"regexp"
 	"time"
 )
 
@@ -42,23 +41,21 @@ func (g NutsNodeService) GetNetworkGraph(w http.ResponseWriter) error {
 	return respondOK(w, graph)
 }
 
-var ownPeerRegex = regexp.MustCompile("\\[P2P Network] Peer ID of local node: (.*)\n")
-
 type node struct {
-	ID    p2p.PeerID   `json:"id"`
+	ID    transport.PeerID   `json:"id"`
 	Self  bool         `json:"self"`
-	Peers []p2p.PeerID `json:"peers"`
+	Peers []transport.PeerID `json:"peers"`
 }
 
 func (g NutsNodeService) getNetworkGraph() ([]node, error) {
-	nodes := make(map[p2p.PeerID]node, 0)
+	nodes := make(map[transport.PeerID]node, 0)
 
 	// Get local node
 	ownPeerIDStr, err := g.getNodePeerID()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get peer ID: %w", err)
 	}
-	ownPeerID := p2p.PeerID(ownPeerIDStr)
+	ownPeerID := transport.PeerID(ownPeerIDStr)
 
 	// Register peer nodes
 	peers, err := v1.HTTPClient{ServerAddress: g.APIAddress, Timeout: 5 * time.Second}.GetPeerDiagnostics()
@@ -70,7 +67,7 @@ func (g NutsNodeService) getNetworkGraph() ([]node, error) {
 	}
 
 	// Register local node
-	peerIDs := make([]p2p.PeerID, 0, len(peers))
+	peerIDs := make([]transport.PeerID, 0, len(peers))
 	for p := range peers {
 		peerIDs = append(peerIDs, p)
 	}
@@ -84,7 +81,7 @@ func (g NutsNodeService) getNetworkGraph() ([]node, error) {
 		result[i].ID = id
 		// nil slices break the frontend
 		if len(result[i].Peers) == 0 {
-			result[i].Peers = []p2p.PeerID{}
+			result[i].Peers = []transport.PeerID{}
 		}
 	}
 	return result, nil
@@ -111,7 +108,7 @@ func (g NutsNodeService) getNodePeerID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s", (data["network"].(map[string]interface{}))["peer_id"]), nil
+	return fmt.Sprintf("%s", ((data["network"].(map[string]interface{}))["connections"].(map[string]interface{}))["peer_id"]), nil
 }
 
 func respondOK(writer http.ResponseWriter, body interface{}) error {
