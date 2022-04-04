@@ -8,24 +8,36 @@
         circle {
             fill: cadetblue;
         }
+
         line {
             stroke: #ccc;
         }
-        text {
+
+        body, text {
             text-anchor: middle;
             font-family: "Helvetica Neue", Helvetica, sans-serif;
             fill: #666;
             font-size: 16px;
         }
+
+        #content {
+            text-align: center;
+        }
+
         svg {
             border: 1px solid black;
+            width: 500px;
+            height: 500px;
+            margin: 0 auto;
+            display: block;
         }
     </style>
 </head>
 
 <body>
 <div id="content">
-    <svg id="target" style="margin: auto;">
+    <h1>Nuts Network Graph</h1>
+    <svg id="target">
         <g class="links"></g>
         <g class="nodes"></g>
     </svg>
@@ -40,27 +52,37 @@
     fetch("api/network/peergraph")
         .then(response => response.json())
         .then((srcData) => {
-            let nodes = srcData.map((node) => { return {
-                "name": node.id,
-            }})
+
+            let nodes = srcData.map((node) => {
+                return {
+                    "name": node.id,
+                }
+            })
 
             const linksSet = new Set();
             srcData.map((node) => {
                 node.peers.map((peer) => {
-                    let peerIndex = nodes.findIndex(e => { return e.name === peer});
+                    let peerIndex = nodes.findIndex(e => {
+                        return e.name === peer
+                    });
                     if (peerIndex === -1) {
                         nodes.push({name: peer});
                         peerIndex = nodes.length - 1
                     }
-                    linksSet.add({"source": nodes.findIndex(e => { return e.name === node.id}), "target": peerIndex})
+                    linksSet.add({
+                        "source": nodes.findIndex(e => {
+                            return e.name === node.id
+                        }), "target": peerIndex
+                    })
                 })
             })
             let links = Array.from(linksSet);
 
-            var simulation = d3.forceSimulation(nodes)
+            d3.forceSimulation(nodes)
                 .force('charge', d3.forceManyBody().strength(-width))
                 .force('center', d3.forceCenter(width / 2, height / 2))
                 .force('link', d3.forceLink().links(links))
+                .force("collide", d3.forceCollide(60))
                 .on('tick', ticked);
 
             function updateLinks() {
@@ -68,43 +90,58 @@
                     .selectAll('line')
                     .data(links)
                     .join('line')
-                    .attr('x1', function(d) {
-                        return d.source.x
-                    })
-                    .attr('y1', function(d) {
-                        return d.source.y
-                    })
-                    .attr('x2', function(d) {
-                        return d.target.x
-                    })
-                    .attr('y2', function(d) {
-                        return d.target.y
-                    });
+                    .attr('x1', (d) => d.source.x)
+                    .attr('y1', (d) => d.source.y)
+                    .attr('x2', (d) => d.target.x)
+                    .attr('y2', (d) => d.target.y);
             }
 
             function updateNodes() {
-                u = d3.select('.nodes')
-                    .selectAll('text')
+                const parentElements = d3.select('.nodes')
+                    // group element
+                    .selectAll('g')
                     .data(nodes)
-                    .join('text')
-                    .text(function(d) {
-                        return d.name.split('-')[0]
-                    })
-                    .attr('x', function(d) {
-                        return d.x
-                    })
-                    .attr('y', function(d) {
-                        return d.y
-                    })
-                    .attr('dy', function(d) {
-                        return 5
+                    .join('g')
+                    .attr('transform', function (d) {
+                        return 'translate(' + d.x + ',' + d.y + ')'
                     });
+
+                // text element
+                parentElements.selectAll('text')
+                    .data((d) => [d])
+                    .join('text')
+                    .text((d) => d.name.split('-')[0])
+
+                // rectangle
+                parentElements.each(function (parent) {
+                    // Get bounding box of text element
+                    const textElement = d3.select(this).selectAll('text').node();
+                    const bbox = textElement.getBBox()
+                    const boxPadding = 10;
+                    const textOffsetY = 5
+
+                    // Create rectangle that around the text element
+                    d3.select(this)
+                        .selectAll('rect')
+                        .data((d) => [d])
+                        .join('rect')
+                        .attr('stroke-width', '1px')
+                        .attr('stroke', 'black')
+                        .attr('fill', 'white')
+                        .attr('width', bbox.width + boxPadding)
+                        .attr('height', bbox.height + boxPadding)
+                        .attr('x', -bbox.width / 2 - boxPadding / 2)
+                        .attr('y', -bbox.height / 2 - boxPadding / 2 - textOffsetY)
+                        // Make sure it's the background of the text element
+                        .lower()
+                })
             }
 
             function ticked() {
                 updateLinks()
                 updateNodes()
             }
+
         })
 </script>
 </body>

@@ -1,0 +1,13 @@
+[{
+  "id": "952d0c33-f9f1-4555-90cb-94c4522f03d7",
+  "self": false,
+  "peers": ["c8727d1a-aa13-49e6-80ab-892ab23c59e8", "dbbb8eeb-5be7-42d1-9492-9c0e9087faba", "873042e8-a917-4032-8b9a-c015e4ee6200", "8587a3f2-2851-4baa-a214-9c484a790f78"]
+}, {
+  "id": "c8727d1a-aa13-49e6-80ab-892ab23c59e8",
+  "self": false,
+  "peers": ["dbbb8eeb-5be7-42d1-9492-9c0e9087faba", "952d0c33-f9f1-4555-90cb-94c4522f03d7", "8587a3f2-2851-4baa-a214-9c484a790f78"]
+}, {
+  "id": "8587a3f2-2851-4baa-a214-9c484a790f78",
+  "self": true,
+  "peers": ["952d0c33-f9f1-4555-90cb-94c4522f03d7", "c8727d1a-aa13-49e6-80ab-892ab23c59e8"]
+}]
